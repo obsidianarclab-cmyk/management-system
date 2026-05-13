@@ -11,6 +11,7 @@ body{
   color:white;
 }
 
+/* HEADER */
 .header{
   text-align:center;
   padding:20px;
@@ -24,8 +25,58 @@ body{
   letter-spacing:3px;
 }
 
-.header p{
-  margin:5px 0 0;
+/* DASHBOARD */
+.dashboard{
+  display:flex;
+  justify-content:center;
+  gap:15px;
+  flex-wrap:wrap;
+  margin-top:20px;
+}
+
+.card{
+  padding:15px 25px;
+  border-radius:12px;
+  min-width:120px;
+  text-align:center;
+  font-weight:bold;
+  border:1px solid #444;
+}
+
+.total{ background:#111; border-color:#c2a66b; }
+.pending{ background:#3b0a0a; }
+.progress{ background:#3b2a05; }
+.done{ background:#0b3b1a; }
+
+.count{
+  font-size:24px;
+  margin-top:5px;
+}
+
+/* 🔴 BLINK */
+.blink{
+  animation:blink 1s infinite;
+  border:2px solid red !important;
+}
+
+@keyframes blink{
+  0%{box-shadow:0 0 5px red;}
+  50%{box-shadow:0 0 20px red;}
+  100%{box-shadow:0 0 5px red;}
+}
+
+/* SEARCH */
+.searchBox{
+  text-align:center;
+  margin-top:15px;
+}
+
+.searchBox input{
+  width:300px;
+  padding:10px;
+  border-radius:8px;
+  border:none;
+  outline:none;
 }
 
 /* TABLE */
@@ -35,20 +86,17 @@ table{
   margin-top:20px;
 }
 
-/* ❗ HEADER ROW (NO CHANGE) */
 th{
   padding:10px;
-  text-align:center;
-  border-bottom:1px solid #333;
   color:#c2a66b;
+  border-bottom:1px solid #333;
 }
 
-/* ✅ ONLY DATA ROW SMALL */
 td{
   padding:8px;
+  font-size:12px;
   text-align:center;
   border-bottom:1px solid #333;
-  font-size:12px;   /* 👈 ONLY THIS SMALL */
 }
 
 /* BUTTON */
@@ -64,14 +112,14 @@ button:hover{
   background:#e0c27a;
 }
 
-/* SELECT */
+/* STATUS */
 select{
   padding:5px;
   border-radius:5px;
-  background:#111;
   color:white;
   border:1px solid #444;
   font-size:12px;
+  font-weight:bold;
 }
 
 </style>
@@ -84,18 +132,48 @@ select{
 <p>ORDER MANAGEMENT SYSTEM</p>
 </div>
 
+<!-- DASHBOARD -->
+<div class="dashboard">
+
+  <div class="card total">
+    TOTAL
+    <div class="count" id="total">0</div>
+  </div>
+
+  <div class="card pending" id="pendingCard">
+    PENDING
+    <div class="count" id="pending">0</div>
+  </div>
+
+  <div class="card progress">
+    PROGRESS
+    <div class="count" id="progress">0</div>
+  </div>
+
+  <div class="card done">
+    COMPLETED
+    <div class="count" id="done">0</div>
+  </div>
+
+</div>
+
+<!-- SEARCH -->
+<div class="searchBox">
+<input type="text" id="search" placeholder="Search Order / Name / Phone..." onkeyup="renderTable()">
+</div>
+
 <table>
 <thead>
 <tr>
 <th>Order Id</th>
-<th>Date Time</th>
+<th>DateTime</th>
 <th>Customer Name</th>
-<th>Customer Phone No.</th>
+<th>Customer PhoneNo</th>
 <th>Receiver Name</th>
-<th>Receiver Phone No.</th>
-<th>Receiver Address</th>
-<th>Receipt</th>
+<th>Receiver PhoneNo</th>
+<th>Address</th>
 <th>Status</th>
+<th>Receipt</th>
 <th>Action</th>
 </tr>
 </thead>
@@ -109,107 +187,129 @@ const URL = "https://script.google.com/macros/s/AKfycbzmTD4ct44yQVxZ2H6yoX8JYbSi
 
 let dataStore = [];
 
-function formatDateTime(dt) {
-  if (!dt) return "";
-
-  let d = new Date(dt);
-
-  let year = d.getFullYear();
-  let month = String(d.getMonth() + 1).padStart(2, '0');
-  let day = String(d.getDate()).padStart(2, '0');
-
-  let hours = String(d.getHours()).padStart(2, '0');
-  let minutes = String(d.getMinutes()).padStart(2, '0');
-  let seconds = String(d.getSeconds()).padStart(2, '0');
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+/* DATE */
+function formatDateTime(dt){
+  if(!dt) return "";
+  return new Date(dt).toLocaleString();
 }
 
+/* LOAD */
 function loadData(){
-
 fetch(URL)
-.then(res => res.text())
-.then(text => {
+.then(res=>res.text())
+.then(text=>{
+  dataStore = JSON.parse(text);
+  updateDashboard();
+  renderTable();
+});
+}
 
-let data = JSON.parse(text);
-dataStore = data;
+/* DASHBOARD */
+function updateDashboard(){
 
+let total = dataStore.length;
+let pending = dataStore.filter(x=>x.status==="Pending").length;
+let progress = dataStore.filter(x=>x.status==="Progress").length;
+let done = dataStore.filter(x=>x.status==="Complete Order").length;
+
+document.getElementById("total").innerText = total;
+document.getElementById("pending").innerText = pending;
+document.getElementById("progress").innerText = progress;
+document.getElementById("done").innerText = done;
+
+/* BLINK IF PENDING > 0 */
+let card = document.getElementById("pendingCard");
+
+if(pending > 0){
+  card.classList.add("blink");
+}else{
+  card.classList.remove("blink");
+}
+
+}
+
+/* TABLE */
+function renderTable(){
+
+let search = document.getElementById("search").value.toLowerCase();
 let html = "";
 
-data.forEach((r, index) => {
+dataStore.forEach((r,i)=>{
+
+let text = (r.orderId+r.customerName+r.customerNo).toLowerCase();
+if(!text.includes(search)) return;
+
+/* STATUS COLOR */
+let bg = "#222";
+if(r.status==="Pending") bg="#7f1d1d";
+else if(r.status==="Progress") bg="#854d0e";
+else if(r.status==="Complete Order") bg="#14532d";
 
 html += `
 <tr>
-<td>${r.orderId || ""}</td>
+<td>${r.orderId||""}</td>
 <td>${formatDateTime(r.dateTime)}</td>
-<td>${r.customerName || ""}</td>
-<td>${r.customerNo || ""}</td>
-<td>${r.receiverName || ""}</td>
-<td>${r.receiverPhone || ""}</td>
+<td>${r.customerName||""}</td>
+<td>${r.customerNo||""}</td>
+<td>${r.receiverName||""}</td>
+<td>${r.receiverPhone||""}</td>
+<td>${r.receiverAddress||""}</td>
 
-<td style="max-width:200px; word-wrap:break-word;">
-${r.receiverAddress || ""}
-</td>
 
 <td>
-<button onclick="openReceipt(${index})">View</button>
-</td>
-
-<td>
-<select id="status-${index}">
-<option ${r.status=="Pending"?"selected":""}>Pending</option>
-<option ${r.status=="Progress"?"selected":""}>Progress</option>
-<option ${r.status=="Complete Order"?"selected":""}>Complete Order</option>
+<select id="status-${i}" style="background:${bg};color:white;font-weight:bold;">
+<option ${r.status==="Pending"?"selected":""}>Pending</option>
+<option ${r.status==="Progress"?"selected":""}>Progress</option>
+<option ${r.status==="Complete Order"?"selected":""}>Complete Order</option>
 </select>
 </td>
 
 <td>
-<button onclick="updateStatus(${index})">Update</button>
+<button onclick="openReceipt(${i})">View</button>
+</td>
+
+<td>
+<button onclick="updateStatus(${i})">Update</button>
 </td>
 </tr>
 `;
-
 });
 
 document.getElementById("table").innerHTML = html;
-
-});
-
 }
 
-function openReceipt(index){
-
-let url = dataStore[index].receiptLink;
-
-if(!url || url.trim() === ""){
-  alert("No receipt available");
-  return;
-}
-
-window.open(url.trim(), "_blank");
-}
-
+/* UPDATE STATUS (IMPORTANT FIX) */
 function updateStatus(index){
 
 let newStatus = document.getElementById("status-"+index).value;
 
 fetch(URL,{
-method:"POST",
-headers:{
-"Content-Type":"application/x-www-form-urlencoded"
-},
-body:new URLSearchParams({
-action:"update",
-orderId: dataStore[index].orderId,
-status:newStatus
-})
+  method:"POST",
+  headers:{
+    "Content-Type":"application/x-www-form-urlencoded"
+  },
+  body:new URLSearchParams({
+    action:"update",
+    orderId: dataStore[index].orderId,
+    status:newStatus
+  })
 })
 .then(res=>res.text())
 .then(res=>{
-alert("Updated!");
-loadData();
+  alert("Updated!");
+  loadData();
+})
+.catch(err=>{
+  alert("Error updating");
 });
 
+}
+
+/* RECEIPT */
+function openReceipt(i){
+let url = dataStore[i].receiptLink;
+if(!url) return alert("No receipt");
+window.open(url,"_blank");
 }
 
 loadData();
