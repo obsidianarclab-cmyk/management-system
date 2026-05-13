@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Casidian Arc Lab - Expense Tracker</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #0b0f14; /* black */
+  color: #ffffff; /* white */
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #c2a66b; /* khaki */
+  letter-spacing: 2px;
+}
+
+/* CARD */
+.card {
+  background: #111;
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid #333;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  margin-bottom: 15px;
+}
+
+/* INPUT */
+input, select {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  outline: none;
+  width: 22%;
+  background: #0b0f14;
+  color: white;
+}
+
+/* BUTTONS */
+button {
+  padding: 8px 12px;
+  margin: 2px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.add-btn { 
+  background: #c2a66b; 
+  color: black; 
+}
+
+.add-btn:hover { 
+  background: #e0c27a; 
+}
+
+.download-btn { 
+  background: #444; 
+  color: white; 
+}
+
+.download-btn:hover { 
+  background: #666; 
+}
+
+.edit-btn { 
+  background: #c2a66b; 
+  color: black; 
+}
+
+.delete-btn { 
+  background: #8b0000; 
+  color: white; 
+}
+
+/* TABLE */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  background: #111;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #333;
+}
+
+/* HEADER */
+th {
+  background: #000;
+  color: #c2a66b;
+}
+
+/* TOTAL */
+h3 {
+  text-align: right;
+  color: #c2a66b;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>💰 Casidian Arc Lab Expense Tracker</h2>
+
+<div class="card">
+<input id="product" placeholder="Product Name">
+<input id="amount" type="number" placeholder="Amount (RM)">
+<input id="date" type="date">
+
+<select id="paidType" onchange="toggleOwnerInput()">
+<option value="Company">Company</option>
+<option value="Own">Own</option>
+</select>
+
+<input id="ownerName" placeholder="Owner Name (if Own)" style="display:none;">
+<input id="remark" placeholder="Remark (optional)">
+
+<br>
+<button class="add-btn" onclick="addOrUpdate()">➕ Add / Update</button>
+<button class="download-btn" onclick="downloadExcel()">📥 Download Excel</button>
+
+<br><br>
+<input type="file" id="fileInput" accept=".csv" onchange="loadFile(event)">
+</div>
+
+<h3>Total: RM <span id="total">0</span></h3>
+
+<div class="card">
+<table>
+<thead>
+<tr>
+<th>Product</th>
+<th>Amount</th>
+<th>Date</th>
+<th>Paid By</th>
+<th>Remark</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody id="table"></tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+let data = [];
+let editIndex = -1;
+
+function toggleOwnerInput() {
+  document.getElementById("ownerName").style.display =
+    (paidType.value === "Own") ? "inline-block" : "none";
+}
+
+function render() {
+  let table = document.getElementById("table");
+  table.innerHTML = "";
+  let total = 0;
+
+  data.forEach((d, index) => {
+    total += Number(d.amount);
+
+    table.innerHTML += `
+      <tr>
+        <td>${d.product}</td>
+        <td>${d.amount}</td>
+        <td>${d.date}</td>
+        <td>${d.paidType}${d.ownerName ? ' - ' + d.ownerName : ''}</td>
+        <td>${d.remark || ''}</td>
+        <td>
+          <button class="edit-btn" onclick="editData(${index})">Edit</button>
+          <button class="delete-btn" onclick="deleteData(${index})">Delete</button>
+        </td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("total").innerText = total;
+}
+
+function addOrUpdate() {
+  let product = document.getElementById("product").value;
+  let amount = document.getElementById("amount").value;
+  let date = document.getElementById("date").value;
+  let paidType = document.getElementById("paidType").value;
+  let ownerName = document.getElementById("ownerName").value;
+  let remark = document.getElementById("remark").value;
+
+  if (!product || !amount || !date) {
+    alert("Please fill all required fields");
+    return;
+  }
+
+  if (paidType === "Own" && !ownerName) {
+    alert("Please enter owner name");
+    return;
+  }
+
+  let record = { product, amount, date, paidType, ownerName, remark };
+
+  if (editIndex === -1) {
+    data.push(record);
+  } else {
+    data[editIndex] = record;
+    editIndex = -1;
+  }
+
+  clearInputs();
+  render();
+}
+
+function editData(index) {
+  let d = data[index];
+
+  document.getElementById("product").value = d.product;
+  document.getElementById("amount").value = d.amount;
+  document.getElementById("date").value = d.date;
+  document.getElementById("paidType").value = d.paidType;
+  document.getElementById("remark").value = d.remark || "";
+
+  toggleOwnerInput();
+  document.getElementById("ownerName").value = d.ownerName || "";
+
+  editIndex = index;
+}
+
+function deleteData(index) {
+  data.splice(index, 1);
+  render();
+}
+
+function clearInputs() {
+  document.getElementById("product").value = "";
+  document.getElementById("amount").value = "";
+  document.getElementById("date").value = "";
+  document.getElementById("ownerName").value = "";
+  document.getElementById("remark").value = "";
+}
+
+function downloadExcel() {
+  let csv = "Product,Amount,Date,PaidType,OwnerName,Remark\n";
+
+  data.forEach(d => {
+    csv += `${d.product},${d.amount},${d.date},${d.paidType},${d.ownerName || ''},${d.remark || ''}\n`;
+  });
+
+  let blob = new Blob([csv], { type: "text/csv" });
+  let a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "casidian_expense.csv";
+  a.click();
+}
+
+function loadFile(event) {
+  let file = event.target.files[0];
+  let reader = new FileReader();
+
+  reader.onload = function(e) {
+    let rows = e.target.result.split("\n").slice(1);
+
+    data = [];
+
+    rows.forEach(r => {
+      let cols = r.split(",");
+      if (cols.length >= 3 && cols[0]) {
+        data.push({
+          product: cols[0],
+          amount: cols[1],
+          date: cols[2],
+          paidType: cols[3] || "",
+          ownerName: cols[4] || "",
+          remark: cols[5] || ""
+        });
+      }
+    });
+
+    render();
+  };
+
+  reader.readAsText(file);
+}
+</script>
+
+</body>
+</html>

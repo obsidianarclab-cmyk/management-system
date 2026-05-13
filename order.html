@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Obsidian Arc Lab - Orders</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0b0f14;
+  color:white;
+}
+
+.header{
+  text-align:center;
+  padding:20px;
+  border-bottom:2px solid #c2a66b;
+  background:linear-gradient(90deg,#000,#111);
+}
+
+.header h2{
+  margin:0;
+  color:#c2a66b;
+  letter-spacing:3px;
+}
+
+.header p{
+  margin:5px 0 0;
+}
+
+/* TABLE */
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:20px;
+}
+
+/* ❗ HEADER ROW (NO CHANGE) */
+th{
+  padding:10px;
+  text-align:center;
+  border-bottom:1px solid #333;
+  color:#c2a66b;
+}
+
+/* ✅ ONLY DATA ROW SMALL */
+td{
+  padding:8px;
+  text-align:center;
+  border-bottom:1px solid #333;
+  font-size:12px;   /* 👈 ONLY THIS SMALL */
+}
+
+/* BUTTON */
+button{
+  padding:6px 10px;
+  border-radius:5px;
+  background:#c2a66b;
+  border:none;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#e0c27a;
+}
+
+/* SELECT */
+select{
+  padding:5px;
+  border-radius:5px;
+  background:#111;
+  color:white;
+  border:1px solid #444;
+  font-size:12px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<h2>OBSIDIAN ARC LAB</h2>
+<p>ORDER MANAGEMENT SYSTEM</p>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Order Id</th>
+<th>Date Time</th>
+<th>Customer Name</th>
+<th>Customer Phone</th>
+<th>Receiver Name</th>
+<th>Receiver Phone</th>
+<th>Receiver Address</th>
+<th>Receipt</th>
+<th>Status</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody id="table"></tbody>
+</table>
+
+<script>
+
+const URL = "https://script.google.com/macros/s/AKfycbzmTD4ct44yQVxZ2H6yoX8JYbSiyVyot-Ge-YHLnvmqhNuC8V_flpQpZewfVrE9OR81/exec";
+
+let dataStore = [];
+
+function formatDateTime(dt) {
+  if (!dt) return "";
+
+  let d = new Date(dt);
+
+  let year = d.getFullYear();
+  let month = String(d.getMonth() + 1).padStart(2, '0');
+  let day = String(d.getDate()).padStart(2, '0');
+
+  let hours = String(d.getHours()).padStart(2, '0');
+  let minutes = String(d.getMinutes()).padStart(2, '0');
+  let seconds = String(d.getSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function loadData(){
+
+fetch(URL)
+.then(res => res.text())
+.then(text => {
+
+let data = JSON.parse(text);
+dataStore = data;
+
+let html = "";
+
+data.forEach((r, index) => {
+
+html += `
+<tr>
+<td>${r.orderId || ""}</td>
+<td>${formatDateTime(r.dateTime)}</td>
+<td>${r.customerName || ""}</td>
+<td>${r.customerNo || ""}</td>
+<td>${r.receiverName || ""}</td>
+<td>${r.receiverPhone || ""}</td>
+
+<td style="max-width:200px; word-wrap:break-word;">
+${r.receiverAddress || ""}
+</td>
+
+<td>
+<button onclick="openReceipt(${index})">View</button>
+</td>
+
+<td>
+<select id="status-${index}">
+<option ${r.status=="Pending"?"selected":""}>Pending</option>
+<option ${r.status=="Progress"?"selected":""}>Progress</option>
+<option ${r.status=="Complete Order"?"selected":""}>Complete Order</option>
+</select>
+</td>
+
+<td>
+<button onclick="updateStatus(${index})">Update</button>
+</td>
+</tr>
+`;
+
+});
+
+document.getElementById("table").innerHTML = html;
+
+});
+
+}
+
+function openReceipt(index){
+
+let url = dataStore[index].receiptLink;
+
+if(!url || url.trim() === ""){
+  alert("No receipt available");
+  return;
+}
+
+window.open(url.trim(), "_blank");
+}
+
+function updateStatus(index){
+
+let newStatus = document.getElementById("status-"+index).value;
+
+fetch(URL,{
+method:"POST",
+headers:{
+"Content-Type":"application/x-www-form-urlencoded"
+},
+body:new URLSearchParams({
+action:"update",
+orderId: dataStore[index].orderId,
+status:newStatus
+})
+})
+.then(res=>res.text())
+.then(res=>{
+alert("Updated!");
+loadData();
+});
+
+}
+
+loadData();
+
+</script>
+
+</body>
+</html>
